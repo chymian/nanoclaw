@@ -7,41 +7,35 @@
  *
  * Or create .env file with MATRIX_HOMESERVER_URL, MATRIX_ACCESS_TOKEN, MATRIX_USER_ID
  */
-
 import * as sdk from 'matrix-js-sdk';
 import { config } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
 // Try to load .env from multiple locations
 const possibleEnvPaths = [
   path.join(process.cwd(), '.env'),
   path.join(__dirname, '..', '..', '..', '.env'),
   path.join(__dirname, '.env'),
 ];
-
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     config({ path: envPath });
     break;
   }
 }
-
 const HOMESERVER_URL = process.env.MATRIX_HOMESERVER_URL!;
 const ACCESS_TOKEN = process.env.MATRIX_ACCESS_TOKEN!;
 const USER_ID = process.env.MATRIX_USER_ID!;
-
 if (!HOMESERVER_URL || !ACCESS_TOKEN || !USER_ID) {
   console.error('Error: MATRIX_HOMESERVER_URL, MATRIX_ACCESS_TOKEN, and MATRIX_USER_ID required');
   console.error('Create .env file or set environment variables');
   process.exit(1);
 }
-
 // Parse args
 const args = process.argv.slice(2);
 let spaceName = '';
 let spaceType: 'private' | 'open' | 'invite' = 'private';
-
 for (let i = 0; i < args.length; i++) {
   switch (args[i]) {
     case '--name':
@@ -55,7 +49,6 @@ for (let i = 0; i < args.length; i++) {
       break;
   }
 }
-
 // Interactive mode if no name provided
 if (!spaceName) {
   const readline = require('readline');
@@ -63,19 +56,16 @@ if (!spaceName) {
     input: process.stdin,
     output: process.stdout,
   });
-
   console.log('=== Create Matrix Space ===\n');
   console.log('Space types:');
   console.log('  private - Private space, invite only (default)');
   console.log('  open    - Open space, anyone can join via link');
   console.log('  invite  - Like private, but stricter permissions');
   console.log('');
-
   const askName = () =>
     new Promise<string>((resolve) => {
       rl.question('Space name: ', (answer: string) => resolve(answer.trim()));
     });
-
   const askType = () =>
     new Promise<'private' | 'open' | 'invite'>((resolve) => {
       rl.question('Type [private/open/invite]: ', (answer: string) => {
@@ -88,7 +78,6 @@ if (!spaceName) {
         }
       });
     });
-
   (async () => {
     spaceName = await askName();
     while (!spaceName) {
@@ -102,20 +91,16 @@ if (!spaceName) {
 } else {
   createSpace();
 }
-
 async function createSpace() {
   const client = sdk.createClient({
     baseUrl: HOMESERVER_URL,
     accessToken: ACCESS_TOKEN,
     userId: USER_ID,
   });
-
   console.log(`\nCreating "${spaceName}" space (${spaceType})...\n`);
-
   const joinRule = spaceType === 'open' ? 'public' : 'invite';
   const preset = spaceType === 'open' ? sdk.Preset.PublicChat : sdk.Preset.PrivateChat;
   const visibility = spaceType === 'open' ? sdk.Visibility.Public : sdk.Visibility.Private;
-
   try {
     const { room_id } = await client.createRoom({
       name: spaceName,
@@ -157,7 +142,6 @@ async function createSpace() {
         },
       ],
     });
-
     console.log('✓ Space created successfully!');
     console.log(`  Room ID: ${room_id}`);
     console.log(`  Type: ${spaceType}`);
@@ -167,16 +151,13 @@ async function createSpace() {
     console.log('  1. Add rooms with: npx tsx link-room-to-space.ts');
     console.log('  2. Invite members with: npx tsx invite-picker.ts');
     console.log('  3. Manage space with: npx tsx manage-space.ts');
-
     // Save to .env.local for easy reference
     const envLocal = path.join(process.cwd(), '.env.local');
     fs.appendFileSync(envLocal, `\n# Created space:\n# MATRIX_SPACE_ID="${room_id}"\n`, { flag: 'a' });
     console.log(`\nRoom ID saved to .env.local`);
-
   } catch (err) {
     console.error('✗ Failed to create space:', (err as Error).message);
     process.exit(1);
   }
-
   client.stopClient();
 }
